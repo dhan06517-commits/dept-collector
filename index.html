@@ -55,6 +55,72 @@
     }
     .card-title i { color: #2563eb; width: 20px; height: 20px; }
 
+    /* ========== 填报进度 ========== */
+    .progress-section .progress-hint {
+      margin: 0 0 12px;
+      font-size: 13px;
+      color: #64748b;
+    }
+    .progress-section .progress-hint strong {
+      color: #2563eb;
+      font-weight: 600;
+    }
+    .progress-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+    }
+    .progress-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fafbfc;
+      font-size: 13px;
+      color: #475569;
+      gap: 8px;
+    }
+    .progress-pill .pill-name {
+      font-weight: 500;
+      color: #1e293b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .progress-pill .pill-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+    .progress-pill.submitted {
+      background: #ecfdf5;
+      border-color: #d1fae5;
+    }
+    .progress-pill.submitted .pill-name { color: #047857; }
+    .progress-pill.submitted .pill-badge {
+      background: #fff;
+      color: #047857;
+      border: 1px solid #d1fae5;
+    }
+    .progress-pill.pending { opacity: 0.85; }
+    .progress-pill.pending .pill-badge {
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fed7aa;
+    }
+    .progress-pill .pill-by {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
     /* ========== 表单基础 ========== */
     .form-input, .form-textarea {
       width: 100%;
@@ -455,6 +521,13 @@
       </div>
     </div>
 
+    <!-- ============ 填报进度（填表端顶部） ============ -->
+    <section class="card progress-section" id="progressSection">
+      <h2 class="card-title"><span style="display:inline-flex;align-items:center;justify-content:center;color:#2563eb;">📅</span> 本月填报进度</h2>
+      <p class="progress-hint" id="progressHint"></p>
+      <div class="progress-grid" id="progressGrid"></div>
+    </section>
+
     <!-- ============ 表单卡片（填表端） ============ -->
     <section id="formCard">
 
@@ -738,6 +811,62 @@
     }
 
     /* ============================================================
+       Progress — 本月填报进度
+       ============================================================ */
+    const Progress = {
+      async render() {
+        const period = $('#periodInput').value.trim() || currentPeriod();
+        const grid = $('#progressGrid');
+        const hint = $('#progressHint');
+        if (!grid) return;
+        const all = await Store.listSubmissions();
+        const thisPeriod = all.filter(s => s.period === period);
+        // 按部门分组
+        const submittedByDept = new Map();
+        for (const r of thisPeriod) {
+          if (!submittedByDept.has(r.dept)) submittedByDept.set(r.dept, r);
+        }
+        // 待提交 = 历史出现但本月没提交的
+        const allDepts = new Set();
+        for (const r of all) allDepts.add(r.dept);
+        const pendingDepts = Array.from(allDepts).filter(d => !submittedByDept.has(d));
+
+        const subN = submittedByDept.size;
+        const pendN = pendingDepts.length;
+        hint.innerHTML = `<strong>${period}</strong> · 已提交 <strong>${subN}</strong> 个部门${
+          pendN ? `，还有 <strong>${pendN}</strong> 个部门未提交` : ''
+        }`;
+
+        const renderPill = (dept, sub) => {
+          if (sub) {
+            return `
+              <div class="progress-pill submitted" title="${escapeHtml(dept)} · ${escapeHtml(sub.name)} · ${fmtTs(sub.ts)}">
+                <span class="pill-name">${escapeHtml(dept)}</span>
+                <span class="pill-by">${escapeHtml(sub.name)}</span>
+                <span class="pill-badge">✓ 已提交</span>
+              </div>
+            `;
+          }
+          return `
+            <div class="progress-pill pending" title="${escapeHtml(dept)} 待提交">
+              <span class="pill-name">${escapeHtml(dept)}</span>
+              <span class="pill-badge">⏰ 待提交</span>
+            </div>
+          `;
+        };
+        // 排序：已提交按时间倒序，待提交按字母
+        const submittedList = Array.from(submittedByDept.entries())
+          .sort((a, b) => (b[1].ts || '').localeCompare(a[1].ts || ''));
+        const pendingList = pendingDepts.sort((a, b) => a.localeCompare(b));
+        grid.innerHTML = [
+          ...submittedList.map(([d, s]) => renderPill(d, s)),
+          ...pendingList.map(d => renderPill(d, null))
+        ].join('');
+      },
+      async refresh() { return Progress.render(); }
+    };
+
+    /* ============================================================
        ReportForm — 整个表单的状态、校验、提交
        ============================================================ */
     class ReportForm {
@@ -762,7 +891,7 @@
         this.refresh();
 
         // 顶部输入
-        $('#periodInput').addEventListener('input', () => this.refresh());
+        $('#periodInput').addEventListener('input', () => { this.refresh(); Progress.render(); });
         $('#deptInput').addEventListener('input', () => this.refresh());
         $('#nameInput').addEventListener('input', () => this.refresh());
 
@@ -875,6 +1004,8 @@
           // 重置（保留期次+部门，清姓名+清内容）
           $('#nameInput').value = '';
           this.resetFields();
+          // 刷新本月填报进度
+          await Progress.render();
         } catch (e) {
           console.error(e);
           toast('提交失败：' + e.message, 'error');
@@ -1095,6 +1226,8 @@
       init() {
         lucide.createIcons();
         this.form = new ReportForm();
+        // 渲染填报进度卡片
+        Progress.render();
         Admin.init();
       }
     };
