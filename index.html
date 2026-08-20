@@ -640,7 +640,7 @@
        模块定义（数据 schema + 校验规则）
        ============================================================ */
     const MODULES = {
-      // 一、重点工作推进情况（6 项全部必填）
+      // 一、重点工作推进情况（7 项全部必填）
       keyWork: {
         label: '重点工作推进情况',
         required: true,
@@ -650,11 +650,12 @@
           { key: 'localEconomy',    label: '内容三：有利服务地方经济',         placeholder: '服务区域经济发展、带动地方物流等内容' },
           { key: 'promotion',       label: '内容四：强化业务推介合作',         placeholder: '业务推介、客户开发、合作洽谈等内容' },
           { key: 'trainPlus',       label: '内容五：拓展"班列+"业务',         placeholder: '"班列+电商/冷链/跨境"等业务拓展情况' },
-          { key: 'safetyDev',       label: '内容六：统筹安全与发展',           placeholder: '安全管理、风险防控、合规与发展统筹等' }
+          { key: 'auditProgress',   label: '内容六：审计整改工作推进情况',     placeholder: '审计整改工作推进情况、整改进度等' },
+          { key: 'hubProgress',     label: '内容七：集结中心建设推进',         placeholder: '集结中心建设推进情况、规划与进展等' }
         ],
-        minFilled: 6,
-        // 6 个字段全部必填，不允许跳过任何一个
-        requiredFields: ['trainService','communication','localEconomy','promotion','trainPlus','safetyDev']
+        minFilled: 7,
+        // 7 个字段全部必填
+        requiredFields: ['trainService','communication','localEconomy','promotion','trainPlus','auditProgress','hubProgress']
       },
       // 二、当前问题和困难（1 项必填）
       difficulties: {
@@ -666,7 +667,7 @@
         minFilled: 1,
         requiredFields: ['issues']
       },
-      // 三、下一步工作打算（9 项；前 8 项必填，第 9 项"其他"选填）
+      // 三、下一步工作打算（8 项；前 7 项必填，第 8 项"其他"选填）
       nextSteps: {
         label: '下一步工作打算',
         required: true,
@@ -677,13 +678,12 @@
           { key: 'overseas',      label: '内容四：境外业务合作',       placeholder: '境外业务拓展与合作计划' },
           { key: 'expand',        label: '内容五：班列业务拓展',       placeholder: '业务规模扩大与新线路开拓计划' },
           { key: 'digital',       label: '内容六："数字班列"建设',    placeholder: '数字化、信息化系统建设计划' },
-          { key: 'market',        label: '内容七：国际物流市场变化',   placeholder: '应对国际物流市场变化的措施' },
-          { key: 'weekly',        label: '内容八：根据周例会内容',     placeholder: '根据周例会要求的工作计划' },
-          { key: 'other',         label: '内容九：其他',               placeholder: '其他需要说明的内容（选填）' }
+          { key: 'safetyDev',     label: '内容七：统筹安全与发展',     placeholder: '安全管理、风险防控、合规与发展统筹等' },
+          { key: 'other',         label: '内容八：其他',               placeholder: '其他需要说明的内容（选填）' }
         ],
-        minFilled: 8,
-        // 前 8 项必填，"其他"选填
-        requiredFields: ['organization','audit','hub','overseas','expand','digital','market','weekly']
+        minFilled: 7,
+        // 前 7 项必填，"其他"选填
+        requiredFields: ['organization','audit','hub','overseas','expand','digital','safetyDev']
       }
     };
 
