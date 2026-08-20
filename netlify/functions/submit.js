@@ -174,13 +174,7 @@ exports.handler = async (event) => {
         ok: true,
         id: record.id,
         replaced: dupes.length > 0,
-        replacedIds: dupes.map(r => r.id),
-        // 调试：返回解码后的 dept/name 让用户对比
-        debugDept: record.dept,
-        debugName: record.name,
-        debugDeptBytes: Array.from(Buffer.from(record.dept || '', 'utf8'))
-          .map(b => b.toString(16).padStart(2, '0')).join(' '),
-        recordsCount: next.length
+        replacedIds: dupes.map(r => r.id)
       })
     };
   } catch (e) {
