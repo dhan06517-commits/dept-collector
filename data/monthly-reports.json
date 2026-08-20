@@ -1,0 +1,43 @@
+{
+  "records": [
+    {
+      "id": "test_2026-08_001",
+      "period": "2026-08",
+      "dept": "������",
+      "name": "����",
+      "ts": "2026-08-17T15:00:00Z",
+      "keyWork": {
+        "completedItems": [
+          {
+            "text": "���� 8 �¶���",
+            "ts": "2026-08-17"
+          }
+        ],
+        "importantMeetings": [],
+        "externalOutputs": [],
+        "externalFeedback": []
+      },
+      "coreKpi": {
+        "kpiValues": [
+          {
+            "text": "Ӫ�� 100 ��",
+            "ts": "2026-08-17"
+          }
+        ],
+        "comparison": [],
+        "innovations": []
+      },
+      "projects": {
+        "progress": [],
+        "responsibility": [],
+        "partners": []
+      },
+      "difficulties": {
+        "issues": [],
+        "internalHelp": [],
+        "externalHelp": [],
+        "risks": []
+      }
+    }
+  ]
+}
