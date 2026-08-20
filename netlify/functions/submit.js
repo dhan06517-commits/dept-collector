@@ -21,7 +21,6 @@ const corsHeaders = {
 };
 
 exports.handler = async (event) => {
-  // CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' };
   }
@@ -30,6 +29,16 @@ exports.handler = async (event) => {
       statusCode: 405,
       headers: corsHeaders,
       body: JSON.stringify({ error: '仅支持 POST' })
+    };
+  }
+
+  if (!process.env.NETLIFY_BLOBS_CONTEXT) {
+    return {
+      statusCode: 503,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        error: 'Netlify Blobs 尚未为该项目初始化'
+      })
     };
   }
 

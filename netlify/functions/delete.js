@@ -35,6 +35,13 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: '仅支持 POST' })
     };
   }
+  if (!process.env.NETLIFY_BLOBS_CONTEXT) {
+    return {
+      statusCode: 503,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Netlify Blobs 尚未为该项目初始化' })
+    };
+  }
   if (!checkBasicAuth(event)) {
     return {
       statusCode: 401,
