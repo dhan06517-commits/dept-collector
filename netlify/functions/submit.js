@@ -83,40 +83,60 @@ exports.handler = async (event) => {
 
   let payload;
   try {
-    // 客户端会把 body 做 utf-8 → base64 编码再发，避免 Netlify 默认 latin1 解码丢失中文
     let raw = event.body || '{}';
+    const debug = { isBase64: !!event.isBase64Encoded, rawLen: raw.length };
+
     if (event.isBase64Encoded) {
       raw = Buffer.from(raw, 'base64').toString('utf8');
     } else {
-      // 兼容直接发送 UTF-8 字节（curl --data-binary 等场景）：
-      // 先尝试 base64 解码（如果解码后是合法 JSON 就用），否则按 latin1→utf8 还原
+      // 尝试 1：直接 JSON.parse（最理想情况）
       try {
-        const decoded = Buffer.from(raw, 'base64').toString('utf8');
-        if (decoded.trim().startsWith('{') || decoded.trim().startsWith('[')) {
-          raw = decoded;
-        } else {
-          throw new Error('not base64');
-        }
-      } catch (_) {
-        // 不是 base64，尝试 latin1→utf8 还原（Netlify 默认 latin1 解码场景）
+        payload = JSON.parse(raw);
+      } catch (_) { /* 不成功继续 */ }
+
+      // 尝试 2：latin1→utf8 还原（Netlify 默认行为，把 utf-8 字节当 latin1 解码）
+      if (!payload) {
         try {
           const recovered = Buffer.from(raw, 'binary').toString('utf8');
-          if (recovered.trim().startsWith('{') || recovered.trim().startsWith('[')) {
-            raw = recovered;
-          } else {
-            raw = event.body || '{}';
+          payload = JSON.parse(recovered);
+          debug.recovered = 'latin1→utf8';
+        } catch (_) { /* 不成功继续 */ }
+      }
+
+      // 尝试 3：base64 解码（前端 fetch 默认走这个路径）
+      if (!payload) {
+        try {
+          const decoded = Buffer.from(raw, 'base64').toString('utf8');
+          if (decoded && (decoded.trim().startsWith('{') || decoded.trim().startsWith('['))) {
+            payload = JSON.parse(decoded);
+            debug.recovered = 'base64';
           }
-        } catch (_) {
-          raw = event.body || '{}';
-        }
+        } catch (_) { /* 不成功继续 */ }
+      }
+
+      // 三种方式都失败
+      if (!payload) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            error: '请求体不是合法 JSON',
+            debug,
+            rawSample: raw.slice(0, 200),
+            rawBytes: Array.from(Buffer.from(raw, 'binary').slice(0, 50))
+              .map(b => b.toString(16).padStart(2, '0')).join(' ')
+          })
+        };
       }
     }
-    payload = JSON.parse(raw);
+    if (!payload) {
+      payload = JSON.parse(raw);
+    }
   } catch (e) {
     return {
       statusCode: 400,
       headers: corsHeaders,
-      body: JSON.stringify({ error: '请求体不是合法 JSON' })
+      body: JSON.stringify({ error: '请求体不是合法 JSON', message: e.message })
     };
   }
   const record = payload.record;
