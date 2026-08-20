@@ -2,9 +2,8 @@
 // 清空所有月报
 // 鉴权：Basic Auth（管理员密码）
 
-const { getStore } = require('@netlify/blobs');
+const GITHUB_API = 'https://api.github.com';
 
-const STORE_NAME = 'monthly-reports';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Kd8@mP3#xL9qV2wN';
 
 const corsHeaders = {
@@ -13,6 +12,19 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json'
 };
+
+const ghHeaders = () => ({
+  'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+  'Accept': 'application/vnd.github+json',
+  'X-GitHub-Api-Version': '2022-11-28',
+  'User-Agent': 'monthly-report-netlify-fn'
+});
+
+const repoPath = () => ({
+  owner: process.env.GITHUB_OWNER || 'dhan06517-commits',
+  repo: process.env.GITHUB_REPO || 'dept-collector',
+  path: 'data/monthly-reports.json'
+});
 
 const checkBasicAuth = (event) => {
   const auth = event.headers.authorization || event.headers.Authorization;
@@ -23,6 +35,38 @@ const checkBasicAuth = (event) => {
     return user === 'admin' && pass === ADMIN_PASSWORD;
   } catch (e) { return false; }
 };
+
+async function readDb() {
+  const { owner, repo, path } = repoPath();
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`;
+  const r = await fetch(url, { headers: ghHeaders() });
+  if (r.status === 404) return { records: [], sha: null };
+  if (!r.ok) throw new Error(`GitHub GET 失败: ${r.status}`);
+  const data = await r.json();
+  const content = Buffer.from(data.content, 'base64').toString('utf8');
+  const records = JSON.parse(content || '{"records":[]}');
+  return { records: records.records || [], sha: data.sha };
+}
+
+async function writeDb(records, sha, message) {
+  const { owner, repo, path } = repoPath();
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`;
+  const body = {
+    message,
+    content: Buffer.from(JSON.stringify({ records }, null, 2)).toString('base64'),
+    sha: sha || undefined
+  };
+  const r = await fetch(url, {
+    method: 'PUT',
+    headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(`GitHub PUT 失败: ${r.status} ${err.message || r.statusText}`);
+  }
+  return r.json();
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -35,11 +79,11 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: '仅支持 POST' })
     };
   }
-  if (!process.env.NETLIFY_BLOBS_CONTEXT) {
+  if (!process.env.GITHUB_TOKEN) {
     return {
       statusCode: 503,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Netlify Blobs 尚未为该项目初始化' })
+      body: JSON.stringify({ error: 'GITHUB_TOKEN 未配置' })
     };
   }
   if (!checkBasicAuth(event)) {
@@ -51,17 +95,14 @@ exports.handler = async (event) => {
   }
 
   try {
-    const store = getStore(STORE_NAME);
-    const { blobs } = await store.list();
-    let count = 0;
-    for (const b of blobs) {
-      await store.delete(b.key);
-      count++;
-    }
+    // 直接覆写为空数组
+    // 我们需要先获取当前 sha 才能写
+    const { sha, records } = await readDb();
+    await writeDb([], sha, 'clear all reports');
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ ok: true, count })
+      body: JSON.stringify({ ok: true, count: records.length })
     };
   } catch (e) {
     console.error('clear error', e);

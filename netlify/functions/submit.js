@@ -1,17 +1,9 @@
 // POST /api/submit
 // 提交/覆盖一条月报
-// 鉴权：任何人（不要求 Basic Auth）
-// 入参：{ record: { id, period, dept, name, ts, keyWork, coreKpi, projects, difficulties } }
-// 校验：period 必须等于当月（YYYY-MM）
+// 鉴权：任何人
+// 存储：GitHub Repo `data/monthly-reports.json`
 
-const { getStore } = require('@netlify/blobs');
-
-const STORE_NAME = 'monthly-reports';
-
-const currentPeriod = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
+const GITHUB_API = 'https://api.github.com';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,6 +11,56 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json'
 };
+
+const ghHeaders = () => ({
+  'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+  'Accept': 'application/vnd.github+json',
+  'X-GitHub-Api-Version': '2022-11-28',
+  'User-Agent': 'monthly-report-netlify-fn'
+});
+
+const repoPath = () => ({
+  owner: process.env.GITHUB_OWNER || 'dhan06517-commits',
+  repo: process.env.GITHUB_REPO || 'dept-collector',
+  path: 'data/monthly-reports.json'
+});
+
+const currentPeriod = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+async function readDb() {
+  const { owner, repo, path } = repoPath();
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`;
+  const r = await fetch(url, { headers: ghHeaders() });
+  if (r.status === 404) return { records: [], sha: null };
+  if (!r.ok) throw new Error(`GitHub GET 失败: ${r.status}`);
+  const data = await r.json();
+  const content = Buffer.from(data.content, 'base64').toString('utf8');
+  const records = JSON.parse(content || '{"records":[]}');
+  return { records: records.records || [], sha: data.sha };
+}
+
+async function writeDb(records, sha, message) {
+  const { owner, repo, path } = repoPath();
+  const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`;
+  const body = {
+    message,
+    content: Buffer.from(JSON.stringify({ records }, null, 2)).toString('base64'),
+    sha: sha || undefined
+  };
+  const r = await fetch(url, {
+    method: 'PUT',
+    headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(`GitHub PUT 失败: ${r.status} ${err.message || r.statusText}`);
+  }
+  return r.json();
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -31,14 +73,11 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: '仅支持 POST' })
     };
   }
-
-  if (!process.env.NETLIFY_BLOBS_CONTEXT) {
+  if (!process.env.GITHUB_TOKEN) {
     return {
       statusCode: 503,
       headers: corsHeaders,
-      body: JSON.stringify({
-        error: 'Netlify Blobs 尚未为该项目初始化'
-      })
+      body: JSON.stringify({ error: 'GITHUB_TOKEN 未配置' })
     };
   }
 
@@ -57,7 +96,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 400,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'record 缺少必要字段 (id/period/dept/name)' })
+      body: JSON.stringify({ error: 'record 缺少必要字段' })
     };
   }
 
@@ -73,37 +112,12 @@ exports.handler = async (event) => {
   }
 
   try {
-    const store = getStore(STORE_NAME);
-    // 去重：按 (period, dept, name) 找同组旧记录并删除
-    const { blobs } = await store.list();
-    const dupes = [];
-    for (const b of blobs) {
-      try {
-        const data = await store.get(b.key, { type: 'json' });
-        if (data && data.period === record.period &&
-            data.dept === record.dept &&
-            data.name === record.name &&
-            b.key !== record.id) {
-          dupes.push(b.key);
-        }
-      } catch (_) { /* 跳过解析失败的 */ }
-    }
-    for (const k of dupes) {
-      await store.delete(k);
-    }
-
-    // 写入新记录
-    await store.setJSON(record.id, {
-      id: record.id,
-      period: record.period,
-      dept: record.dept,
-      name: record.name,
-      ts: record.ts || new Date().toISOString(),
-      keyWork: record.keyWork || {},
-      coreKpi: record.coreKpi || {},
-      projects: record.projects || {},
-      difficulties: record.difficulties || {}
-    });
+    const { records, sha } = await readDb();
+    const key = (r) => `${r.period}|${r.dept}|${r.name}`;
+    const dupes = records.filter(r => key(r) === key(record) && r.id !== record.id);
+    const next = records.filter(r => key(r) !== key(record));
+    next.push(record);
+    await writeDb(next, sha, dupes.length > 0 ? 'update report (cover)' : 'submit new report');
 
     return {
       statusCode: 200,
@@ -112,7 +126,7 @@ exports.handler = async (event) => {
         ok: true,
         id: record.id,
         replaced: dupes.length > 0,
-        replacedIds: dupes
+        replacedIds: dupes.map(r => r.id)
       })
     };
   } catch (e) {
