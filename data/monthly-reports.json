@@ -21,6 +21,17 @@
       "coreKpi": {},
       "projects": {},
       "difficulties": {}
+    },
+    {
+      "id": "simple_test",
+      "period": "2026-08",
+      "dept": "abc",
+      "name": "xyz",
+      "ts": "2026-08-17",
+      "keyWork": {},
+      "coreKpi": {},
+      "projects": {},
+      "difficulties": {}
     }
   ]
 }
