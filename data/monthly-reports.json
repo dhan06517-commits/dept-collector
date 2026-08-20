@@ -63,6 +63,65 @@
         ],
         "risks": []
       }
+    },
+    {
+      "ts": "2026-08-20T08:22:35.116Z",
+      "period": "2026-08",
+      "dept": "测试部",
+      "name": "测试二",
+      "id": "r_2026-08_测试部_测试二_1787214155116",
+      "keyWork": {
+        "completedItems": [
+          {
+            "text": "111",
+            "ts": "2026-08-20T08:22:19.081Z"
+          }
+        ],
+        "importantMeetings": [
+          {
+            "text": "22222",
+            "ts": "2026-08-20T08:22:20.889Z"
+          }
+        ],
+        "externalOutputs": [],
+        "externalFeedback": []
+      },
+      "coreKpi": {
+        "kpiValues": [
+          {
+            "text": "333333333333333333",
+            "ts": "2026-08-20T08:22:23.387Z"
+          }
+        ],
+        "comparison": [],
+        "innovations": []
+      },
+      "projects": {
+        "progress": [
+          {
+            "text": "444444444444444444444",
+            "ts": "2026-08-20T08:22:26.129Z"
+          }
+        ],
+        "responsibility": [],
+        "partners": []
+      },
+      "difficulties": {
+        "issues": [
+          {
+            "text": "65666666666666666666",
+            "ts": "2026-08-20T08:22:28.577Z"
+          }
+        ],
+        "internalHelp": [
+          {
+            "text": "66666666666666666666666666666",
+            "ts": "2026-08-20T08:22:32.280Z"
+          }
+        ],
+        "externalHelp": [],
+        "risks": []
+      }
     }
   ]
 }
