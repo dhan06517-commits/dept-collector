@@ -554,28 +554,22 @@
         </div>
       </section>
 
-      <!-- 模块 1：必填 ≥2 类 -->
+      <!-- 模块 1：重点工作推进情况（6 项全部必填） -->
       <section class="module-section required" id="module-keyWork" data-module="keyWork">
-        <h2><span class="num">一</span> 本月重点工作完成情况<span class="req-mark">*</span></h2>
-        <p class="module-hint">以下 4 类中至少填写 2 类，每类至少 1 条</p>
+        <h2><span class="num">一</span> 重点工作推进情况<span class="req-mark">*</span></h2>
+        <p class="module-hint">以下 6 项内容均需填写，每项至少 1 条</p>
       </section>
 
-      <!-- 模块 2：必填 ≥1 类 -->
-      <section class="module-section required" id="module-coreKpi" data-module="coreKpi">
-        <h2><span class="num">二</span> 业务核心指标完成情况<span class="req-mark">*</span></h2>
-        <p class="module-hint">以下 3 类中至少填写 1 类</p>
-      </section>
-
-      <!-- 模块 3：选填 -->
-      <section class="module-section optional" id="module-projects" data-module="projects">
-        <h2><span class="num">三</span> 重点项目 / 专项任务推进情况<span class="opt-mark">（选填）</span></h2>
-        <p class="module-hint">选填，没有可不填</p>
-      </section>
-
-      <!-- 模块 4：必填 ≥2 类 -->
+      <!-- 模块 2：当前问题和困难（1 项必填） -->
       <section class="module-section required" id="module-difficulties" data-module="difficulties">
-        <h2><span class="num">四</span> 工作难点<span class="req-mark">*</span></h2>
-        <p class="module-hint">以下 4 类中至少填写 2 类</p>
+        <h2><span class="num">二</span> 当前问题和困难<span class="req-mark">*</span></h2>
+        <p class="module-hint">请描述本月业务开展中遇到的问题与困难</p>
+      </section>
+
+      <!-- 模块 3：下一步工作打算（9 项；前 8 项必填，第 9 项"其他"选填） -->
+      <section class="module-section required" id="module-nextSteps" data-module="nextSteps">
+        <h2><span class="num">三</span> 下一步工作打算<span class="req-mark">*</span></h2>
+        <p class="module-hint">以下 8 项必填，第 9 项"其他"选填</p>
       </section>
 
       <!-- 提交 -->
@@ -646,47 +640,50 @@
        模块定义（数据 schema + 校验规则）
        ============================================================ */
     const MODULES = {
+      // 一、重点工作推进情况（6 项全部必填）
       keyWork: {
-        label: '本月重点工作完成情况',
+        label: '重点工作推进情况',
         required: true,
         fields: [
-          { key: 'completedItems',    label: '内容一：已完成重点工作',    placeholder: '做了什么、取得什么结果（不要只写过程）' },
-          { key: 'importantMeetings', label: '内容二：重要会议',          placeholder: '会议主题、时间、参与单位、主要成果' },
-          { key: 'externalOutputs',   label: '内容三：对外输出成果',      placeholder: '简报、调研报告、汇报材料、对外新闻稿件' },
-          { key: 'externalFeedback',  label: '内容四：外部反馈 / 政策落地', placeholder: '国家 /省厅 /海关 /国铁相关政策对接落实情况' }
+          { key: 'trainService',    label: '内容一：班列开行服务与质量保障', placeholder: '班列开行数量、运行准点率、服务质量改进等' },
+          { key: 'communication',   label: '内容二：深化内外沟通交流',         placeholder: '内部协调、对外联络、重要会议交流等' },
+          { key: 'localEconomy',    label: '内容三：有利服务地方经济',         placeholder: '服务区域经济发展、带动地方物流等内容' },
+          { key: 'promotion',       label: '内容四：强化业务推介合作',         placeholder: '业务推介、客户开发、合作洽谈等内容' },
+          { key: 'trainPlus',       label: '内容五：拓展"班列+"业务',         placeholder: '"班列+电商/冷链/跨境"等业务拓展情况' },
+          { key: 'safetyDev',       label: '内容六：统筹安全与发展',           placeholder: '安全管理、风险防控、合规与发展统筹等' }
         ],
-        minFilled: 2
+        minFilled: 6,
+        // 6 个字段全部必填，不允许跳过任何一个
+        requiredFields: ['trainService','communication','localEconomy','promotion','trainPlus','safetyDev']
       },
-      coreKpi: {
-        label: '业务核心指标完成情况',
-        required: true,
-        fields: [
-          { key: 'kpiValues',   label: '内容一：业务指标实际完成', placeholder: '实际完成值、月度目标值、完成率' },
-          { key: 'comparison',  label: '内容二：同比环比变化',     placeholder: '对比上月 /去年同期的增减及主要原因' },
-          { key: 'innovations', label: '内容三：特色 / 创新业务',  placeholder: '新线路首发、专列开行、金融产品、电商班列等' }
-        ],
-        minFilled: 1
-      },
-      projects: {
-        label: '重点项目 / 专项任务推进情况',
-        required: false,
-        fields: [
-          { key: 'progress',       label: '内容一：本月进展',       placeholder: '已完成哪些节点、当前所处阶段' },
-          { key: 'responsibility', label: '内容二：本部门职责',     placeholder: '在项目中承担的职责' },
-          { key: 'partners',       label: '内容三：协同外部单位',   placeholder: '国铁、海关、港口、各地陆港、省直部门等' }
-        ],
-        minFilled: 0
-      },
+      // 二、当前问题和困难（1 项必填）
       difficulties: {
-        label: '工作难点',
+        label: '当前问题和困难',
         required: true,
         fields: [
-          { key: 'issues',       label: '内容一：业务问题',         placeholder: '业务开展中遇到的主要问题' },
-          { key: 'internalHelp', label: '内容二：内部协同需求',     placeholder: '需要哪个部门、需要做什么' },
-          { key: 'externalHelp', label: '内容三：外部协调需求',     placeholder: '需要公司层面向上级单位协调解决' },
-          { key: 'risks',        label: '内容四：风险提示',         placeholder: '潜在业务风险、经营风险、合规风险' }
+          { key: 'issues', label: '当前问题与困难描述', placeholder: '本月业务开展中遇到的问题与困难' }
         ],
-        minFilled: 2
+        minFilled: 1,
+        requiredFields: ['issues']
+      },
+      // 三、下一步工作打算（9 项；前 8 项必填，第 9 项"其他"选填）
+      nextSteps: {
+        label: '下一步工作打算',
+        required: true,
+        fields: [
+          { key: 'organization',  label: '内容一：关于开行组织',       placeholder: '下一步班列开行组织计划' },
+          { key: 'audit',         label: '内容二：根据审计整改工作',   placeholder: '针对审计问题下一步整改计划' },
+          { key: 'hub',           label: '内容三：集结中心建设',       placeholder: '集结中心规划与建设计划' },
+          { key: 'overseas',      label: '内容四：境外业务合作',       placeholder: '境外业务拓展与合作计划' },
+          { key: 'expand',        label: '内容五：班列业务拓展',       placeholder: '业务规模扩大与新线路开拓计划' },
+          { key: 'digital',       label: '内容六："数字班列"建设',    placeholder: '数字化、信息化系统建设计划' },
+          { key: 'market',        label: '内容七：国际物流市场变化',   placeholder: '应对国际物流市场变化的措施' },
+          { key: 'weekly',        label: '内容八：根据周例会内容',     placeholder: '根据周例会要求的工作计划' },
+          { key: 'other',         label: '内容九：其他',               placeholder: '其他需要说明的内容（选填）' }
+        ],
+        minFilled: 8,
+        // 前 8 项必填，"其他"选填
+        requiredFields: ['organization','audit','hub','overseas','expand','digital','market','weekly']
       }
     };
 
@@ -965,6 +962,7 @@
         ).length;
       }
 
+      /** 校验所有 requiredFields 都已填 */
       validate() {
         // 基础信息
         if (!$('#periodInput').value.trim()) return false;
@@ -973,7 +971,17 @@
         // 必填模块
         for (const [moduleKey, mod] of Object.entries(MODULES)) {
           if (!mod.required) continue;
-          if (this.countFilled(moduleKey) < mod.minFilled) return false;
+          // 如果指定了 requiredFields 列表，则每个字段都必须有内容
+          if (mod.requiredFields && mod.requiredFields.length) {
+            for (const fieldKey of mod.requiredFields) {
+              if (this.managers[moduleKey][fieldKey].countFilled() === 0) {
+                return false;
+              }
+            }
+          } else {
+            // 否则按 minFilled 算
+            if (this.countFilled(moduleKey) < mod.minFilled) return false;
+          }
         }
         return true;
       }
@@ -982,15 +990,20 @@
         // 每个模块状态文案
         for (const [moduleKey, mod] of Object.entries(MODULES)) {
           const filled = this.countFilled(moduleKey);
-          const min = mod.minFilled;
-          const ok = !mod.required || filled >= min;
+          const required = mod.requiredFields || [];
+          // 如果有 requiredFields，按 required 计算"还需要填几个"
+          const requiredCount = required.length || mod.minFilled;
+          const requiredFilled = required.length
+            ? required.filter(f => this.managers[moduleKey][f].countFilled() > 0).length
+            : filled;
+          const ok = !mod.required || requiredFilled >= requiredCount;
           const status = $(`.module-status[data-status="${moduleKey}"]`);
           if (mod.required) {
-            status.innerHTML = `已完成 <strong>${filled}</strong> / ${mod.fields.length} 类（至少 ${min} 类）${
+            status.innerHTML = `已完成 <strong>${requiredFilled}</strong> / ${requiredCount} 必填项${
               ok ? ' <span style="color:#059669;">✓ 满足</span>' : ''
             }`;
           } else {
-            status.innerHTML = `已填写 <strong>${filled}</strong> / ${mod.fields.length} 类`;
+            status.innerHTML = `已填写 <strong>${filled}</strong> / ${mod.fields.length} 项`;
           }
           status.classList.toggle('met', ok);
         }
@@ -1144,8 +1157,12 @@
         }
 
         // 按部门分组（按 period 过滤后这里都是同一月份）
+        const moduleOrder = ['一', '二', '三', '四', '五'];
         let html = '';
-        for (const [moduleKey, mod] of Object.entries(MODULES)) {
+        const moduleKeys = Object.keys(MODULES);
+        for (let i = 0; i < moduleKeys.length; i++) {
+          const moduleKey = moduleKeys[i];
+          const mod = MODULES[moduleKey];
           // 找出该模块下"至少填了 1 条"的记录数
           const filledRecords = records.filter(r => {
             return mod.fields.some(f => (r[moduleKey]?.[f.key] || []).length > 0);
@@ -1153,7 +1170,7 @@
           html += `
             <section class="module-block">
               <h3 class="module-block-title">
-                <span class="num">${['一','二','三','四'][['keyWork','coreKpi','projects','difficulties'].indexOf(moduleKey)]}</span>
+                <span class="num">${moduleOrder[i] || '·'}</span>
                 ${mod.label}
                 <span class="badge-count">${filledRecords.length} 份已填</span>
               </h3>
