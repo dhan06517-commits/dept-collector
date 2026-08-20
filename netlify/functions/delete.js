@@ -100,7 +100,25 @@ exports.handler = async (event) => {
     if (event.isBase64Encoded) {
       raw = Buffer.from(raw, 'base64').toString('utf8');
     } else {
-      raw = Buffer.from(raw, 'latin1').toString('utf8');
+      try {
+        const decoded = Buffer.from(raw, 'base64').toString('utf8');
+        if (decoded.trim().startsWith('{') || decoded.trim().startsWith('[')) {
+          raw = decoded;
+        } else {
+          throw new Error('not base64');
+        }
+      } catch (_) {
+        try {
+          const recovered = Buffer.from(raw, 'binary').toString('utf8');
+          if (recovered.trim().startsWith('{') || recovered.trim().startsWith('[')) {
+            raw = recovered;
+          } else {
+            raw = event.body || '{}';
+          }
+        } catch (_) {
+          raw = event.body || '{}';
+        }
+      }
     }
     payload = JSON.parse(raw);
   } catch (e) {

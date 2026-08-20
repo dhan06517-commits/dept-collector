@@ -723,10 +723,13 @@
        * 提交一条月报（覆盖同 period+dept+name）
        */
       async submit(record) {
+        // 把 JSON 字符串转 base64 再 POST，避免 Netlify Function 默认 latin1 解码丢失中文
+        const json = JSON.stringify({ record });
+        const b64 = btoa(unescape(encodeURIComponent(json)));  // utf-8 -> base64
         const r = await fetch('/api/submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ record })
+          body: b64
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
@@ -738,13 +741,15 @@
        * 删除单条（需要 Basic Auth）
        */
       async deleteOne(id) {
+        const json = JSON.stringify({ id });
+        const b64 = btoa(unescape(encodeURIComponent(json)));
         const r = await fetch('/api/delete', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Basic ' + Store._token()
           },
-          body: JSON.stringify({ id })
+          body: b64
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {

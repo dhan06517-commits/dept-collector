@@ -83,15 +83,33 @@ exports.handler = async (event) => {
 
   let payload;
   try {
-    // Netlify Functions 默认把请求体按 latin1 解码。
-    // 如果客户端没声明 charset 或发了非 utf-8，中文会变成乱码。
-    // 强制按 utf-8 重新解码一遍。
+    // 客户端会把 body 做 utf-8 → base64 编码再发，避免 Netlify 默认 latin1 解码丢失中文
     let raw = event.body || '{}';
     if (event.isBase64Encoded) {
       raw = Buffer.from(raw, 'base64').toString('utf8');
     } else {
-      // 把 latin1 字符串按字节还原，再当 utf-8 解码
-      raw = Buffer.from(raw, 'latin1').toString('utf8');
+      // 兼容直接发送 UTF-8 字节（curl --data-binary 等场景）：
+      // 先尝试 base64 解码（如果解码后是合法 JSON 就用），否则按 latin1→utf8 还原
+      try {
+        const decoded = Buffer.from(raw, 'base64').toString('utf8');
+        if (decoded.trim().startsWith('{') || decoded.trim().startsWith('[')) {
+          raw = decoded;
+        } else {
+          throw new Error('not base64');
+        }
+      } catch (_) {
+        // 不是 base64，尝试 latin1→utf8 还原（Netlify 默认 latin1 解码场景）
+        try {
+          const recovered = Buffer.from(raw, 'binary').toString('utf8');
+          if (recovered.trim().startsWith('{') || recovered.trim().startsWith('[')) {
+            raw = recovered;
+          } else {
+            raw = event.body || '{}';
+          }
+        } catch (_) {
+          raw = event.body || '{}';
+        }
+      }
     }
     payload = JSON.parse(raw);
   } catch (e) {
