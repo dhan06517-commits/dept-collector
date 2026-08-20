@@ -10,6 +10,17 @@
       "coreKpi": {},
       "projects": {},
       "difficulties": {}
+    },
+    {
+      "id": "utf8_v2",
+      "period": "2026-08",
+      "dept": "财务部",
+      "name": "张三",
+      "ts": "2026-08-17T15:00:00Z",
+      "keyWork": {},
+      "coreKpi": {},
+      "projects": {},
+      "difficulties": {}
     }
   ]
 }
