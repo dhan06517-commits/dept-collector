@@ -614,11 +614,8 @@
     'use strict';
 
     /* ============================================================
-       CONFIG
+       CONFIG（管理员密码定义在 Store 模块内，因为 Store 用它做 Basic Auth）
        ============================================================ */
-    const CONFIG = {
-      ADMIN_PASSWORD: 'admin123'
-    };
 
     /* ============================================================
        Utilities
@@ -694,37 +691,83 @@
     };
 
     /* ============================================================
-       Store — localStorage（无 IndexedDB）
+       Store — Netlify Functions API 客户端
        ============================================================ */
-    const LS_KEY = 'monthly-report:v1';
-    const LS_SEEDED = 'monthly-report:seeded';
+    // 管理员密码（用于 Basic Auth，与后端 delete/clear 一致）
+    const CONFIG = {
+      ADMIN_PASSWORD: 'Kd8@mP3#xL9qV2wN'   // 16 字符强密码
+    };
 
     const Store = {
-      async listSubmissions() {
-        try {
-          const raw = localStorage.getItem(LS_KEY);
-          if (!raw) {
-            // 首次访问：设标志但**不写入任何示例数据**（完全空数据）
-            if (!localStorage.getItem(LS_SEEDED)) {
-              localStorage.setItem(LS_SEEDED, '1');
-            }
-            return [];
-          }
-          return JSON.parse(raw);
-        } catch (e) {
-          console.error(e);
-          return [];
-        }
+      _token: () => btoa('admin:' + CONFIG.ADMIN_PASSWORD),
+      /**
+       * 拉取所有月报（用于 Progress 算历史部门 / Admin 全局）
+       */
+      async listAll() {
+        const r = await fetch('/api/list');
+        if (!r.ok) throw new Error('查询失败 (' + r.status + ')');
+        const data = await r.json();
+        return data.records || [];
       },
-      async saveAll(list) {
-        localStorage.setItem(LS_KEY, JSON.stringify(list));
-      },
+      /**
+       * 拉取当月（或指定月）月报
+       */
       async listByPeriod(period) {
-        const list = await Store.listSubmissions();
-        return list.filter(s => s.period === period);
+        const url = '/api/list?period=' + encodeURIComponent(period);
+        const r = await fetch(url);
+        if (!r.ok) throw new Error('查询失败 (' + r.status + ')');
+        const data = await r.json();
+        return data.records || [];
       },
+      /**
+       * 提交一条月报（覆盖同 period+dept+name）
+       */
+      async submit(record) {
+        const r = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ record })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(data.error || ('提交失败 (' + r.status + ')'));
+        }
+        return data;
+      },
+      /**
+       * 删除单条（需要 Basic Auth）
+       */
+      async deleteOne(id) {
+        const r = await fetch('/api/delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + Store._token()
+          },
+          body: JSON.stringify({ id })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(data.error || ('删除失败 (' + r.status + ')'));
+        }
+        return data;
+      },
+      /**
+       * 清空所有（需要 Basic Auth）
+       */
       async clearAll() {
-        localStorage.removeItem(LS_KEY);
+        const r = await fetch('/api/clear', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Basic ' + Store._token()
+          }
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(data.error || ('清空失败 (' + r.status + ')'));
+        }
+        return data;
       }
     };
 
@@ -819,7 +862,7 @@
         const grid = $('#progressGrid');
         const hint = $('#progressHint');
         if (!grid) return;
-        const all = await Store.listSubmissions();
+        const all = await Store.listAll();
         const thisPeriod = all.filter(s => s.period === period);
         // 按部门分组
         const submittedByDept = new Map();
@@ -988,15 +1031,10 @@
         await new Promise(r => setTimeout(r, 200));
 
         try {
-          const list = await Store.listSubmissions();
-          const key = (r) => `${r.period}|${r.dept}|${r.name}`;
-          const existed = list.find(r => key(r) === key(record));
-          const filtered = list.filter(r => key(r) !== key(record));
-          filtered.push(record);
-          await Store.saveAll(filtered);
+          const result = await Store.submit(record);
 
           toast(
-            existed
+            result.replaced
               ? `${record.dept} ${record.period} 已覆盖更新`
               : `${record.dept} ${record.period} 提交成功`,
             'success'
@@ -1156,22 +1194,25 @@
       },
 
       async deleteOne(id) {
-        const ok = await this._confirmInline('删除此份月报？', '此操作不可恢复（仅清浏览器本地）', 'danger');
+        const ok = await this._confirmInline('删除此份月报？', '此操作不可恢复（云端数据）', 'danger');
         if (!ok) return;
-        const all = await Store.listSubmissions();
-        const next = all.filter(r => r.id !== id);
-        await Store.saveAll(next);
-        toast('已删除', 'success');
-        await this.showData();
+        try {
+          await Store.deleteOne(id);
+          toast('已删除', 'success');
+          await this.showData();
+        } catch (e) {
+          console.error(e);
+          toast('删除失败：' + e.message, 'error');
+        }
       },
 
       async clearAll() {
-        const subs = await Store.listSubmissions();
+        const subs = await Store.listByPeriod(currentPeriod());
         const n = subs.length;
         if (n === 0) { toast('当前无数据可清空', ''); return; }
         const ok = await this._confirmInline(
           `清空全部 ${n} 条月报？`,
-          '此操作不可恢复（Demo 模式仅清浏览器本地）',
+          '此操作不可恢复（云端数据）',
           'danger'
         );
         if (!ok) return;
