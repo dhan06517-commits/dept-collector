@@ -2,8 +2,15 @@
   functions = "netlify/functions"
   publish = "."
 
+# 函数 URL 重写：/api/* → /.netlify/functions/*
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# CORS 头：让前端 fetch 能跨域
 [[headers]]
-  for = "/api/*"
+  for = "/.netlify/functions/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type, Authorization"
