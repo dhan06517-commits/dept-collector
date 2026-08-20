@@ -83,7 +83,17 @@ exports.handler = async (event) => {
 
   let payload;
   try {
-    payload = JSON.parse(event.body || '{}');
+    // Netlify Functions 默认把请求体按 latin1 解码。
+    // 如果客户端没声明 charset 或发了非 utf-8，中文会变成乱码。
+    // 强制按 utf-8 重新解码一遍。
+    let raw = event.body || '{}';
+    if (event.isBase64Encoded) {
+      raw = Buffer.from(raw, 'base64').toString('utf8');
+    } else {
+      // 把 latin1 字符串按字节还原，再当 utf-8 解码
+      raw = Buffer.from(raw, 'latin1').toString('utf8');
+    }
+    payload = JSON.parse(raw);
   } catch (e) {
     return {
       statusCode: 400,

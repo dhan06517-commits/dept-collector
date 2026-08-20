@@ -96,7 +96,13 @@ exports.handler = async (event) => {
 
   let payload;
   try {
-    payload = JSON.parse(event.body || '{}');
+    let raw = event.body || '{}';
+    if (event.isBase64Encoded) {
+      raw = Buffer.from(raw, 'base64').toString('utf8');
+    } else {
+      raw = Buffer.from(raw, 'latin1').toString('utf8');
+    }
+    payload = JSON.parse(raw);
   } catch (e) {
     return {
       statusCode: 400,
