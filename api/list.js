@@ -1,4 +1,4 @@
-// GET /api/list?period=YYYY-MM
+// GET /api/list  (auto-deploy test)?period=YYYY-MM
 // 列出所有月报
 // 鉴权：任何人
 // 存储：GitHub Repo `data/monthly-reports.json`
