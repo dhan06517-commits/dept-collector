@@ -2,7 +2,7 @@
   functions = "netlify/functions"
   publish = "."
 
-# 函数 URL 重写：/api/* → /.netlify/functions/*
+# Functions URL 重写：/api/* → /.netlify/functions/*
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
@@ -15,3 +15,18 @@
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type, Authorization"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+
+# 静态资源安全头（防 XSS / 点击劫持 / MIME 嗅探 / 引用泄露）
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    # Content-Security-Policy：白名单控制资源加载
+    # - 'self' 限同源
+    # - 'unsafe-inline' for style（Lucide icon CSS 用）
+    # - https://unpkg.com 限 Lucide icon 库
+    Content-Security-Policy = "default-src 'self'; style-src 'self' 'unsafe-inline' https://unpkg.com; script-src 'self' https://unpkg.com; img-src 'self' data:; font-src 'self' https://unpkg.com; connect-src 'self'; frame-ancestors 'none';"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"

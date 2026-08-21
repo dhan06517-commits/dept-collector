@@ -691,9 +691,26 @@
        Store — Netlify Functions API 客户端
        ============================================================ */
     // 管理员密码（用于 Basic Auth，与后端 delete/clear 一致）
+    // 优先级：
+    //   1) Netlify Function /api/config 返回的密码（部署时环境变量注入，源代码中不出现明文）
+    //   2) window.__ADMIN_PASSWORD__（在 index.html 部署时手工注入）
+    //   3) 临时 fallback（仅离线开发用）
     const CONFIG = {
-      ADMIN_PASSWORD: 'Kd8@mP3#xL9qV2wN'   // 16 字符强密码
+      ADMIN_PASSWORD: 'dev-only-please-set-NETLIFY-ADMIN-PASSWORD'  // 部署前必须通过环境变量覆盖
     };
+    // 启动后异步加载 /api/config 覆盖 CONFIG
+    (async () => {
+      try {
+        const r = await fetch('/api/config');
+        if (r.ok) {
+          const data = await r.json();
+          if (data && data.adminPassword) {
+            CONFIG.ADMIN_PASSWORD = data.adminPassword;
+            console.info('[config] 管理员密码已从服务端加载');
+          }
+        }
+      } catch (_) { /* 离线模式用 fallback */ }
+    })();
 
     const Store = {
       _token: () => btoa('admin:' + CONFIG.ADMIN_PASSWORD),

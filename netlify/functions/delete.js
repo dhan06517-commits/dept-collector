@@ -3,8 +3,10 @@
 // 鉴权：Basic Auth（管理员密码）
 
 const GITHUB_API = 'https://api.github.com';
+const { check: rateCheck } = require('./_rate-limiter');
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Kd8@mP3#xL9qV2wN';
+// 优先从 Netlify 环境变量读（生产推荐），fallback 仅用于本地开发
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,6 +86,22 @@ exports.handler = async (event) => {
       statusCode: 503,
       headers: corsHeaders,
       body: JSON.stringify({ error: 'GITHUB_TOKEN 未配置' })
+    };
+  }
+  // Rate Limiting
+  const rate = rateCheck('delete', event);
+  if (!rate.ok) {
+    return {
+      statusCode: 429,
+      headers: { ...corsHeaders, 'Retry-After': String(rate.retryAfter) },
+      body: JSON.stringify({ error: '删除过于频繁', retryAfter: rate.retryAfter })
+    };
+  }
+  if (!ADMIN_PASSWORD) {
+    return {
+      statusCode: 503,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: '管理员密码未配置（Netlify 后台缺少 ADMIN_PASSWORD 环境变量）' })
     };
   }
   if (!checkBasicAuth(event)) {

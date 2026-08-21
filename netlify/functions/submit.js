@@ -4,6 +4,7 @@
 // 存储：GitHub Repo `data/monthly-reports.json`
 
 const GITHUB_API = 'https://api.github.com';
+const { check: rateCheck } = require('./_rate-limiter');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,6 +79,19 @@ exports.handler = async (event) => {
       statusCode: 503,
       headers: corsHeaders,
       body: JSON.stringify({ error: 'GITHUB_TOKEN 未配置' })
+    };
+  }
+
+  // Rate Limiting（防恶意刷数据）
+  const rate = rateCheck('submit', event);
+  if (!rate.ok) {
+    return {
+      statusCode: 429,
+      headers: { ...corsHeaders, 'Retry-After': String(rate.retryAfter) },
+      body: JSON.stringify({
+        error: '提交过于频繁，请稍后再试',
+        retryAfter: rate.retryAfter
+      })
     };
   }
 
@@ -159,10 +173,18 @@ exports.handler = async (event) => {
     };
   }
 
-  try {
+try {
     const { records, sha } = await readDb();
     const key = (r) => `${r.period}|${r.dept}|${r.name}`;
     const dupes = records.filter(r => key(r) === key(record) && r.id !== record.id);
+    // 审计：服务端注入元数据（IP + UA + 服务器时间戳）
+    // 注意：record.ts 是用户提交时间，meta.submittedAt 是服务器接收时间
+    record.meta = {
+      ...(record.meta || {}),
+      submittedAt: new Date().toISOString(),
+      submittedIp: (event.headers['x-forwarded-for'] || '').split(',')[0]?.trim() || null,
+      submittedUa: (event.headers['user-agent'] || '').slice(0, 200) || null
+    };
     const next = records.filter(r => key(r) !== key(record));
     next.push(record);
     await writeDb(next, sha, dupes.length > 0 ? 'update report (cover)' : 'submit new report');
