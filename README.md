@@ -207,3 +207,4 @@ Netlify 自动 build + 部署。
 - 填表端：https://calm-sawine-3834e9.netlify.app/
 - 管理员：https://calm-sawine-3834e9.netlify.app/?admin=admin123
 - 管理员密码：默认 `Kd8@mP3#xL9qV2wN`（建议改）
+- 测试 Vercel Git 自动部署 (auto-deploy test)
