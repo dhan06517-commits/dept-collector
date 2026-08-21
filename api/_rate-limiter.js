@@ -1,6 +1,6 @@
 // 极简 Rate Limiter（基于函数实例内存）
-// 生产建议：Netlify Blobs / Upstash Redis / Cloudflare KV
-// 但我们 Netlify Blobs 装不上 → 用内存 Map（重启会丢，但 Netlify Functions 复用实例）
+// 注意：Vercel Functions 是无状态的，跨实例内存不共享
+// 但每个实例内有效（可挡掉大部分自动化攻击）
 
 const limits = {
   submit: { max: 100, windowMs: 24 * 60 * 60 * 1000 },  // 每天 100 次
@@ -8,7 +8,7 @@ const limits = {
   clear:  { max: 5,  windowMs: 60 * 60 * 1000 }         // 每小时 5 次
 };
 
-const buckets = new Map(); // key: `${action}:${ip}` → [{ts}]
+const buckets = new Map();
 
 function cleanOld(arr, windowMs) {
   const now = Date.now();
@@ -17,16 +17,18 @@ function cleanOld(arr, windowMs) {
 
 function getKey(action, ip) { return `${action}:${ip}`; }
 
-function getIp(event) {
-  return event.headers['x-forwarded-for']?.split(',')[0]?.trim()
-    || event.headers['client-ip']
-    || 'unknown';
+export function getIp(req) {
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) return xff.split(',')[0].trim();
+  const real = req.headers.get('x-real-ip');
+  if (real) return real;
+  return 'unknown';
 }
 
-function check(action, event) {
+export function check(action, req) {
   const cfg = limits[action];
   if (!cfg) return { ok: true };
-  const ip = getIp(event);
+  const ip = getIp(req);
   const key = getKey(action, ip);
   if (!buckets.has(key)) buckets.set(key, []);
   const arr = buckets.get(key);
@@ -40,5 +42,3 @@ function check(action, event) {
   arr.push(Date.now());
   return { ok: true };
 }
-
-module.exports = { check, getIp };

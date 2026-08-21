@@ -1,9 +1,7 @@
 {
   "name": "monthly-report",
   "version": "1.0.0",
-  "description": "部门月度工作汇报 - Netlify Functions 后端 + Blobs 存储",
+  "description": "部门月度工作汇报 - Vercel Functions + GitHub Repo JSON 存储",
   "private": true,
-  "dependencies": {
-    "@netlify/blobs": "^8.0.0"
-  }
+  "type": "module"
 }

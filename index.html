@@ -554,10 +554,10 @@
         </div>
       </section>
 
-      <!-- 模块 1：重点工作推进情况（6 项全部必填） -->
+      <!-- 模块 1：重点工作推进情况（14 项；前 13 项必填，第 14 项"其他"选填） -->
       <section class="module-section required" id="module-keyWork" data-module="keyWork">
         <h2><span class="num">一</span> 重点工作推进情况<span class="req-mark">*</span></h2>
-        <p class="module-hint">以下 6 项内容均需填写，每项至少 1 条</p>
+        <p class="module-hint">以下 14 项内容，前 13 项必填，每项至少 1 条；第 14 项"其他"选填</p>
       </section>
 
       <!-- 模块 2：当前问题和困难（1 项必填） -->
@@ -566,10 +566,16 @@
         <p class="module-hint">请描述本月业务开展中遇到的问题与困难</p>
       </section>
 
-      <!-- 模块 3：下一步工作打算（9 项；前 8 项必填，第 9 项"其他"选填） -->
+      <!-- 模块 3：部门/市公司开展的其他工作（1 项必填） -->
+      <section class="module-section required" id="module-otherWork" data-module="otherWork">
+        <h2><span class="num">三</span> 部门/市公司开展的其他工作<span class="req-mark">*</span></h2>
+        <p class="module-hint">除以上工作外，本部门/市公司开展的其他工作内容</p>
+      </section>
+
+      <!-- 模块 4：下一步工作打算（14 项；前 13 项必填，第 14 项"其他"选填） -->
       <section class="module-section required" id="module-nextSteps" data-module="nextSteps">
-        <h2><span class="num">三</span> 下一步工作打算<span class="req-mark">*</span></h2>
-        <p class="module-hint">以下 8 项必填，第 9 项"其他"选填</p>
+        <h2><span class="num">四</span> 下一步工作打算<span class="req-mark">*</span></h2>
+        <p class="module-hint">以下 14 项内容，前 13 项必填，每项至少 1 条；第 14 项"其他"选填</p>
       </section>
 
       <!-- 提交 -->
@@ -640,22 +646,29 @@
        模块定义（数据 schema + 校验规则）
        ============================================================ */
     const MODULES = {
-      // 一、重点工作推进情况（7 项全部必填）
+      // 一、重点工作推进情况（14 项；前 13 项必填，第 14 项"其他"选填）
       keyWork: {
         label: '重点工作推进情况',
         required: true,
         fields: [
-          { key: 'trainService',    label: '内容一：班列开行服务与质量保障', placeholder: '班列开行数量、运行准点率、服务质量改进等' },
-          { key: 'communication',   label: '内容二：深化内外沟通交流',         placeholder: '内部协调、对外联络、重要会议交流等' },
-          { key: 'localEconomy',    label: '内容三：有利服务地方经济',         placeholder: '服务区域经济发展、带动地方物流等内容' },
-          { key: 'promotion',       label: '内容四：强化业务推介合作',         placeholder: '业务推介、客户开发、合作洽谈等内容' },
-          { key: 'trainPlus',       label: '内容五：拓展"班列+"业务',         placeholder: '"班列+电商/冷链/跨境"等业务拓展情况' },
-          { key: 'auditProgress',   label: '内容六：审计整改工作推进情况',     placeholder: '审计整改工作推进情况、整改进度等' },
-          { key: 'hubProgress',     label: '内容七：集结中心建设推进',         placeholder: '集结中心建设推进情况、规划与进展等' }
+          { key: 'm1',  label: '内容一：班列开行组织服务保障',     placeholder: '本月班列开行数量、运行准点率等' },
+          { key: 'm2',  label: '内容二：深化内外沟通协调与合作',   placeholder: '内部协调、对外联络、重要会议等' },
+          { key: 'm3',  label: '内容三：推进集结中心建设',         placeholder: '集结中心建设进展' },
+          { key: 'm4',  label: '内容四：推进通道线路建设',         placeholder: '通道线路拓展、节点新增' },
+          { key: 'm5',  label: '内容五：推进审计整改工作',         placeholder: '审计整改工作推进情况' },
+          { key: 'm6',  label: '内容六：拓展"班列+"业务',         placeholder: '"班列+电商/冷链/跨境"等业务' },
+          { key: 'm7',  label: '内容七：打造班列服务产品',         placeholder: '班列服务产品设计与打造' },
+          { key: 'm8',  label: '内容八：推进数字班列建设',         placeholder: '数字化、信息化系统建设' },
+          { key: 'm9',  label: '内容九：推进境外服务体系建设',     placeholder: '境外服务网络建设' },
+          { key: 'm10', label: '内容十：业务宣传与推介',           placeholder: '业务宣传、品牌推广' },
+          { key: 'm11', label: '内容十一：促进运贸融合发展',       placeholder: '运输+贸易融合模式' },
+          { key: 'm12', label: '内容十二：完善管理制度建设',       placeholder: '内部管理制度建设' },
+          { key: 'm13', label: '内容十三：推进统筹安全与发展',     placeholder: '安全管理、风险防控、合规发展' },
+          { key: 'm14', label: '内容十四：其他',                   placeholder: '其他需要说明的内容（选填）' }
         ],
-        minFilled: 7,
-        // 7 个字段全部必填
-        requiredFields: ['trainService','communication','localEconomy','promotion','trainPlus','auditProgress','hubProgress']
+        minFilled: 13,
+        // 前 13 项必填，第 14 项"其他"选填
+        requiredFields: ['m1','m2','m3','m4','m5','m6','m7','m8','m9','m10','m11','m12','m13']
       },
       // 二、当前问题和困难（1 项必填）
       difficulties: {
@@ -667,23 +680,39 @@
         minFilled: 1,
         requiredFields: ['issues']
       },
-      // 三、下一步工作打算（8 项；前 7 项必填，第 8 项"其他"选填）
+      // 三、部门/市公司开展的其他工作（1 项必填）
+      otherWork: {
+        label: '部门/市公司开展的其他工作',
+        required: true,
+        fields: [
+          { key: 'otherDesc', label: '其他工作内容', placeholder: '部门/市公司除以上工作外开展的其他业务' }
+        ],
+        minFilled: 1,
+        requiredFields: ['otherDesc']
+      },
+      // 四、下一步工作打算（14 项；前 13 项必填，第 14 项"其他"选填）
       nextSteps: {
         label: '下一步工作打算',
         required: true,
         fields: [
-          { key: 'organization',  label: '内容一：关于开行组织',       placeholder: '下一步班列开行组织计划' },
-          { key: 'audit',         label: '内容二：根据审计整改工作',   placeholder: '针对审计问题下一步整改计划' },
-          { key: 'hub',           label: '内容三：集结中心建设',       placeholder: '集结中心规划与建设计划' },
-          { key: 'overseas',      label: '内容四：境外业务合作',       placeholder: '境外业务拓展与合作计划' },
-          { key: 'expand',        label: '内容五：班列业务拓展',       placeholder: '业务规模扩大与新线路开拓计划' },
-          { key: 'digital',       label: '内容六："数字班列"建设',    placeholder: '数字化、信息化系统建设计划' },
-          { key: 'safetyDev',     label: '内容七：统筹安全与发展',     placeholder: '安全管理、风险防控、合规与发展统筹等' },
-          { key: 'other',         label: '内容八：其他',               placeholder: '其他需要说明的内容（选填）' }
+          { key: 'n1',  label: '内容一：班列开行组织服务保障',     placeholder: '下一步班列开行计划' },
+          { key: 'n2',  label: '内容二：内外沟通协调与合作',       placeholder: '下一步沟通计划' },
+          { key: 'n3',  label: '内容三：集结中心建设',             placeholder: '下一步集结中心计划' },
+          { key: 'n4',  label: '内容四：通道线路建设',             placeholder: '下一步通道建设计划' },
+          { key: 'n5',  label: '内容五：审计整改工作',             placeholder: '下一步审计整改计划' },
+          { key: 'n6',  label: '内容六："班列+"业务',            placeholder: '下一步班列+业务计划' },
+          { key: 'n7',  label: '内容七：班列服务产品',             placeholder: '下一步产品打造计划' },
+          { key: 'n8',  label: '内容八："数字班列"建设',          placeholder: '下一步数字化计划' },
+          { key: 'n9',  label: '内容九：境外服务体系建设',         placeholder: '下一步境外拓展计划' },
+          { key: 'n10', label: '内容十：业务宣传与推介',           placeholder: '下一步宣传推介计划' },
+          { key: 'n11', label: '内容十一：运贸融合发展',           placeholder: '下一步运贸融合计划' },
+          { key: 'n12', label: '内容十二：管理制度建设',           placeholder: '下一步管理建设计划' },
+          { key: 'n13', label: '内容十三：统筹安全与发展',         placeholder: '下一步统筹计划' },
+          { key: 'n14', label: '内容十四：其他',                   placeholder: '其他需要说明的内容（选填）' }
         ],
-        minFilled: 7,
-        // 前 7 项必填，"其他"选填
-        requiredFields: ['organization','audit','hub','overseas','expand','digital','safetyDev']
+        minFilled: 13,
+        // 前 13 项必填，第 14 项"其他"选填
+        requiredFields: ['n1','n2','n3','n4','n5','n6','n7','n8','n9','n10','n11','n12','n13']
       }
     };
 
