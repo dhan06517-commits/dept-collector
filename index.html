@@ -920,10 +920,19 @@
 
         const renderPill = (dept, sub) => {
           if (sub) {
+            const c = sub.completion || {};
+            // 计算总完成度：四个模块 filled/total 相加
+            const totals = Object.values(c).reduce((acc, s) => {
+              const [f, t] = String(s).split('/').map(Number);
+              return { f: acc.f + (f || 0), t: acc.t + (t || 0) };
+            }, { f: 0, t: 0 });
+            const pct = totals.t ? Math.round(100 * totals.f / totals.t) : 0;
+            const detail = Object.entries(c)
+              .map(([k, v]) => `${k}=${v}`).join(' ');
             return `
-              <div class="progress-pill submitted" title="${escapeHtml(dept)} · ${escapeHtml(sub.name)} · ${fmtTs(sub.ts)}">
+              <div class="progress-pill submitted" title="${escapeHtml(dept)} · ${escapeHtml(sub.name)} · ${fmtTs(sub.ts)}\n${escapeHtml(detail)}">
                 <span class="pill-name">${escapeHtml(dept)}</span>
-                <span class="pill-by">${escapeHtml(sub.name)}</span>
+                <span class="pill-by">${escapeHtml(sub.name)} · ${pct}%</span>
                 <span class="pill-badge">✓ 已提交</span>
               </div>
             `;
