@@ -592,12 +592,12 @@
   <!-- ============ 密码弹层 ============ -->
   <div class="modal-mask" id="passwordModal">
     <div class="modal">
-      <h3>管理员访问</h3>
-      <p>请输入管理员密码以查看月报汇总。</p>
+      <h3 id="passwordTitle">管理员访问</h3>
+      <p id="passwordHint">请输入管理员 PIN 以查看月报汇总。</p>
       <input class="form-input" type="password" id="passwordInput"
-             placeholder="管理员密码" autocomplete="off" />
+             placeholder="管理员 PIN" autocomplete="off" />
       <div id="passwordError" style="color:#dc2626;font-size:13px;margin-top:6px;display:none;">
-        密码错误，请重试
+        PIN 错误，请重试
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary btn-sm" id="passwordCancel" type="button">取消</button>
@@ -718,34 +718,17 @@
 
     /* ============================================================
        Store — Netlify Functions API 客户端
-       ============================================================ */
-    // 管理员密码（用于 Basic Auth，与后端 delete/clear 一致）
-    // 优先级：
-    //   1) Netlify Function /api/config 返回的密码（部署时环境变量注入，源代码中不出现明文）
-    //   2) window.__ADMIN_PASSWORD__（在 index.html 部署时手工注入）
-    //   3) 临时 fallback（仅离线开发用）
-    const CONFIG = {
-      ADMIN_PASSWORD: 'dev-only-please-set-NETLIFY-ADMIN-PASSWORD'  // 部署前必须通过环境变量覆盖
-    };
-    // 启动后异步加载 /api/config 覆盖 CONFIG
-    (async () => {
-      try {
-        const r = await fetch('/api/config');
-        if (r.ok) {
-          const data = await r.json();
-          if (data && data.adminPassword) {
-            CONFIG.ADMIN_PASSWORD = data.adminPassword;
-            console.info('[config] 管理员密码已从服务端加载');
-          }
-        }
-      } catch (_) { /* 离线模式用 fallback */ }
-    })();
+       ============================================================
+       管理员鉴权说明：
+       - 服务端三个管理接口（admin-list / delete / clear）已不校验密码
+       - 访问控制靠两件事：
+         1) URL 带 ?admin=admin123（知道 URL 才能进管理页）
+         2) 管理页首次进入时设置一个 6 位 PIN，存到 sessionStorage（哈希）
+            下次进入该 tab 时用同样 PIN 解锁（哈希比对）
+       - PIN 是浏览器本地概念，不进网络、不进聊天、不进代码
+    */
 
     const Store = {
-      /**
-       * 当前会话的密码（页面内登录后存，关闭标签即清空）
-       */
-      _token: () => btoa('admin:' + CONFIG.ADMIN_PASSWORD),
       /**
        * 拉取所有月报（用于 Progress 算历史部门 / Admin 全局）
        */
@@ -784,29 +767,24 @@
         return data;
       },
       /**
-       * 管理员接口：拉取完整月报（含内容，需 Basic Auth）
+       * 管理员接口：拉取完整月报（无服务端鉴权，访问控制靠 URL ?admin=admin123）
        */
       async adminListByPeriod(period) {
         const url = '/api/admin-list?period=' + encodeURIComponent(period);
-        const r = await fetch(url, {
-          headers: { 'Authorization': 'Basic ' + Store._token() }
-        });
+        const r = await fetch(url);
         if (!r.ok) throw new Error('查询失败 (' + r.status + ')');
         const data = await r.json();
         return data.records || [];
       },
       /**
-       * 删除单条（需 Basic Auth）
+       * 删除单条（无服务端鉴权）
        */
       async deleteOne(id) {
         const json = JSON.stringify({ id });
         const b64 = btoa(unescape(encodeURIComponent(json)));
         const r = await fetch('/api/delete', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + Store._token()
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: b64
         });
         const data = await r.json().catch(() => ({}));
@@ -816,15 +794,12 @@
         return data;
       },
       /**
-       * 清空所有（需 Basic Auth）
+       * 清空所有（无服务端鉴权）
        */
       async clearAll() {
         const r = await fetch('/api/clear', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + Store._token()
-          }
+          headers: { 'Content-Type': 'application/json' }
         });
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
@@ -1168,19 +1143,60 @@
       },
 
       bindEvents() {
-        // 密码弹窗（页面内登录，本地比较密码）
+        // PIN 弹窗：
+        //   - sessionStorage 没有 adminPinHash → 首次设置 PIN（任意 6-12 位字符串）
+        //   - 已设置 → 输 PIN 解锁（哈希比对）
         const input = $('#passwordInput');
         const errEl = $('#passwordError');
-        const tryUnlock = () => {
-          if (input.value === CONFIG.ADMIN_PASSWORD) {
+        const titleEl = $('#passwordTitle');
+        const hintEl = $('#passwordHint');
+        const isFirstTime = !sessionStorage.getItem('adminPinHash');
+        if (titleEl) titleEl.textContent = isFirstTime ? '设置管理员 PIN' : '管理员访问';
+        if (hintEl) hintEl.textContent = isFirstTime
+          ? '首次访问，请设置一个 6-12 位 PIN（仅本浏览器记住，关闭浏览器会失效）'
+          : '请输入管理员 PIN 以查看月报汇总。';
+        input.placeholder = isFirstTime ? '设置 6-12 位 PIN' : '管理员 PIN';
+        input.type = 'password';
+        // SHA-256 哈希（异步，crypto.subtle 必须 HTTPS 或 localhost）
+        const sha256 = async (s) => {
+          const buf = new TextEncoder().encode(s);
+          const hash = await crypto.subtle.digest('SHA-256', buf);
+          return Array.from(new Uint8Array(hash))
+            .map(b => b.toString(16).padStart(2, '0')).join('');
+        };
+        const tryUnlock = async () => {
+          const v = input.value;
+          if (v.length < 6 || v.length > 12) {
+            errEl.textContent = 'PIN 长度需在 6-12 位之间';
+            errEl.style.display = 'block';
+            input.select();
+            return;
+          }
+          if (isFirstTime) {
+            // 设置：存哈希
+            const h = await sha256(v);
+            sessionStorage.setItem('adminPinHash', h);
             sessionStorage.setItem('adminUnlocked', '1');
             $('#passwordModal').classList.remove('open');
             errEl.style.display = 'none';
+            input.value = '';
             this.showData();
-            toast('解锁成功', 'success');
+            toast('PIN 已设置，解锁成功', 'success');
           } else {
-            errEl.style.display = 'block';
-            input.select();
+            // 校验
+            const h = await sha256(v);
+            if (h === sessionStorage.getItem('adminPinHash')) {
+              sessionStorage.setItem('adminUnlocked', '1');
+              $('#passwordModal').classList.remove('open');
+              errEl.style.display = 'none';
+              input.value = '';
+              this.showData();
+              toast('解锁成功', 'success');
+            } else {
+              errEl.textContent = 'PIN 错误，请重试';
+              errEl.style.display = 'block';
+              input.select();
+            }
           }
         };
         $('#passwordConfirm').addEventListener('click', tryUnlock);
@@ -1195,7 +1211,14 @@
       async showData() {
         const period = currentPeriod();
         // 走管理员接口（Basic Auth），拉完整月报内容
-        const all = await Store.adminListByPeriod(period);
+        let all;
+        try {
+          all = await Store.adminListByPeriod(period);
+        } catch (e) {
+          console.error(e);
+          toast('管理员数据拉取失败：' + e.message, 'error');
+          return;
+        }
         $('#adminTotal').textContent = all.length;
         const container = $('#summaryContainer');
         container.innerHTML = this._buildSummaryHTML(all, period);

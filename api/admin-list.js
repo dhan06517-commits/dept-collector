@@ -1,10 +1,8 @@
 // GET /api/admin-list
 // 返回完整月报内容
-// 鉴权：Basic Auth
+// 鉴权：无（访问控制靠 URL ?admin=admin123 + 前端 PIN 校验）
 
 import { getStore } from './_github.js';
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,30 +11,9 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 };
 
-const checkBasicAuth = (req) => {
-  const auth = req.headers['authorization'] || req.headers['Authorization'];
-  if (!auth || !auth.startsWith('Basic ')) return false;
-  try {
-    const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');
-    const i = decoded.indexOf(':');
-    if (i < 0) return false;
-    const pass = decoded.slice(i + 1);
-    return pass === ADMIN_PASSWORD;
-  } catch (e) { return false; }
-};
-
 export async function GET(req) {
   if (!process.env.GITHUB_TOKEN) {
     return new Response(JSON.stringify({ error: 'GITHUB_TOKEN 未配置' }), { status: 503, headers: corsHeaders });
-  }
-  if (!ADMIN_PASSWORD) {
-    return new Response(JSON.stringify({ error: '管理员密码未配置' }), { status: 503, headers: corsHeaders });
-  }
-  if (!checkBasicAuth(req)) {
-    return new Response(
-      JSON.stringify({ error: '需要管理员密码' }),
-      { status: 401, headers: { ...corsHeaders, 'WWW-Authenticate': 'Basic realm="Admin"' } }
-    );
   }
 
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);

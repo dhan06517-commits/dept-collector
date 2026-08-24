@@ -1,7 +1,6 @@
 // GET /api/config
-// 返回前端需要的配置（管理员密码从环境变量读）
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
+// 当前未使用 — 管理员鉴权改为客户端 PIN + URL ?admin=admin123
+// 保留此端点以便将来扩展
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,14 +10,8 @@ const corsHeaders = {
 };
 
 export async function GET() {
-  if (!ADMIN_PASSWORD) {
-    return new Response(
-      JSON.stringify({ error: '管理员密码未配置（Vercel 后台缺少 ADMIN_PASSWORD 环境变量）' }),
-      { status: 503, headers: corsHeaders }
-    );
-  }
   return new Response(
-    JSON.stringify({ adminPassword: ADMIN_PASSWORD }),
+    JSON.stringify({ ok: true, note: '管理员鉴权已迁移到前端 PIN，无服务端配置' }),
     { status: 200, headers: corsHeaders }
   );
 }
