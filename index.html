@@ -781,6 +781,18 @@
         return data;
       },
       /**
+       * 管理员接口：拉取完整月报（含内容，需 Basic Auth）
+       */
+      async adminListByPeriod(period) {
+        const url = '/api/admin-list?period=' + encodeURIComponent(period);
+        const r = await fetch(url, {
+          headers: { 'Authorization': 'Basic ' + Store._token() }
+        });
+        if (!r.ok) throw new Error('查询失败 (' + r.status + ')');
+        const data = await r.json();
+        return data.records || [];
+      },
+      /**
        * 删除单条（需要 Basic Auth）
        */
       async deleteOne(id) {
@@ -1179,7 +1191,8 @@
 
       async showData() {
         const period = currentPeriod();
-        const all = await Store.listByPeriod(period);
+        // 走管理员接口（Basic Auth），拉完整月报内容
+        const all = await Store.adminListByPeriod(period);
         $('#adminTotal').textContent = all.length;
         const container = $('#summaryContainer');
         container.innerHTML = this._buildSummaryHTML(all, period);
@@ -1275,6 +1288,7 @@
       },
 
       async clearAll() {
+        // 用脱敏接口拿记录数（只数部门数即可）
         const subs = await Store.listByPeriod(currentPeriod());
         const n = subs.length;
         if (n === 0) { toast('当前无数据可清空', ''); return; }

@@ -1,11 +1,9 @@
-// GET /api/list  (auto-deploy test)?period=YYYY-MM
-// 列出所有月报
-// 鉴权：任何人
-// 存储：GitHub Repo `data/monthly-reports.json`
+// GET /api/list?period=YYYY-MM
+// 只返回"已提交/待提交"部门名列表（不含任何月报内容）
+// 鉴权：任何人（但数据脱敏，只看到部门名 + 是否已交）
+// 月报内容请访问 /api/admin/list（需 Basic Auth）
 
 import { getStore } from './_github.js';
-
-const STORE_NAME = 'monthly-reports';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,12 +24,20 @@ export async function GET(req) {
   }
 
   try {
-    const records = await getStore().list(period);
-    records.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
+    const all = await getStore().list(period);
+    // 数据脱敏：只暴露部门和提交时间，不返回月报内容
+    const summary = all.map(r => ({
+      dept: r.dept,
+      name: r.name,
+      period: r.period,
+      ts: r.ts
+      // ❌ 不返回 keyWork / coreKpi / projects / difficulties / meta
+    }));
+    summary.sort((a, b) => (a.dept || '').localeCompare(b.dept || ''));
     return new Response(
       JSON.stringify({
-        records,
-        count: records.length,
+        records: summary,
+        count: summary.length,
         period: period || null
       }),
       { status: 200, headers: corsHeaders }
