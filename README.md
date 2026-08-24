@@ -210,3 +210,5 @@ Netlify 自动 build + 部署。
 - 测试 Vercel Git 自动部署 (auto-deploy test)
 
 - **最后更新**: 2026-08-21 17:57:54
+
+- Vercel Deploy Hook 集成测试
