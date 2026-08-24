@@ -1,4 +1,5 @@
 // GET /api/admin-list
+import { getHeader, getClientIp } from "./_headers.js";
 // 返回完整月报内容（包含所有字段）
 // 鉴权方式 1：Basic Auth（向后兼容）
 // 鉴权方式 2：Header X-Admin-Password（页面内登录用）
@@ -16,10 +17,10 @@ const corsHeaders = {
 
 const checkAdmin = (req) => {
   // 方式 1：自定义 Header（页面内登录）
-  const customPw = req.headers.get('x-admin-password');
+  const customPw = getHeader(req, 'x-admin-password');
   if (customPw && customPw === ADMIN_PASSWORD) return true;
   // 方式 2：Basic Auth
-  const auth = req.headers.get('authorization') || req.headers.get('Authorization');
+  const auth = getHeader(req, 'authorization') || getHeader(req, 'Authorization');
   if (auth && auth.startsWith('Basic ')) {
     try {
       const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');

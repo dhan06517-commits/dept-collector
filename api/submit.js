@@ -1,4 +1,5 @@
 // POST /api/submit
+import { getHeader, getClientIp } from "./_headers.js";
 // 提交/覆盖一条月报
 // 鉴权：任何人
 // 存储：GitHub Repo `data/monthly-reports.json`
@@ -77,12 +78,12 @@ export async function POST(req) {
     const dupes = records.filter(r => key(r) === key(record) && r.id !== record.id);
 
     // 审计：服务端注入元数据
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null;
+    const ip = getHeader(req, 'x-forwarded-for')?.split(',')[0]?.trim() || null;
     record.meta = {
       ...(record.meta || {}),
       submittedAt: new Date().toISOString(),
       submittedIp: ip,
-      submittedUa: (req.headers.get('user-agent') || '').slice(0, 200) || null
+      submittedUa: (getHeader(req, 'user-agent') || '').slice(0, 200) || null
     };
 
     const next = records.filter(r => key(r) !== key(record));

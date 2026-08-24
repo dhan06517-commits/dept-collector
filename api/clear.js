@@ -1,4 +1,5 @@
 // POST /api/clear
+import { getHeader, getClientIp } from "./_headers.js";
 // 清空所有月报
 // 鉴权：Basic Auth（管理员密码）
 
@@ -15,9 +16,9 @@ const corsHeaders = {
 };
 
 const checkAdmin = (req) => {
-  const customPw = req.headers.get('x-admin-password');
+  const customPw = getHeader(req, 'x-admin-password');
   if (customPw && customPw === ADMIN_PASSWORD) return true;
-  const auth = req.headers.get('authorization') || req.headers.get('Authorization');
+  const auth = getHeader(req, 'authorization') || getHeader(req, 'Authorization');
   if (auth && auth.startsWith('Basic ')) {
     try {
       const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');

@@ -1,4 +1,5 @@
 // 极简 Rate Limiter（基于函数实例内存）
+import { getHeader, getClientIp } from "./_headers.js";
 // 注意：Vercel Functions 是无状态的，跨实例内存不共享
 // 但每个实例内有效（可挡掉大部分自动化攻击）
 
@@ -18,9 +19,9 @@ function cleanOld(arr, windowMs) {
 function getKey(action, ip) { return `${action}:${ip}`; }
 
 export function getIp(req) {
-  const xff = req.headers.get('x-forwarded-for');
+  const xff = getHeader(req, 'x-forwarded-for');
   if (xff) return xff.split(',')[0].trim();
-  const real = req.headers.get('x-real-ip');
+  const real = getHeader(req, 'x-real-ip');
   if (real) return real;
   return 'unknown';
 }

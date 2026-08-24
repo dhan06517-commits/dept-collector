@@ -12,10 +12,9 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 };
 
-// 简单的速率限制（内存版）
 const buckets = new Map();
-const LIMIT = 5;  // 5 次
-const WINDOW = 60 * 1000;  // 1 分钟
+const LIMIT = 5;
+const WINDOW = 60 * 1000;
 
 function rateCheck(ip) {
   const now = Date.now();
@@ -38,7 +37,9 @@ export default async function handler(req) {
     );
   }
 
-  const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || 'unknown';
+  // Vercel Functions 默认 req.headers 是普通对象，用方括号访问
+  const xff = (req.headers && (req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For'])) || '';
+  const ip = xff.split(',')[0]?.trim() || 'unknown';
   if (!rateCheck(ip)) {
     return new Response(
       JSON.stringify({ error: '尝试次数过多，请稍后再试' }),
@@ -78,5 +79,3 @@ export default async function handler(req) {
     { status: 200, headers: corsHeaders }
   );
 }
-
-export async function OPTIONS_() {}
