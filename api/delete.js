@@ -23,7 +23,8 @@ const checkBasicAuth = (req) => {
     if (i < 0) return false;
     const user = decoded.slice(0, i);
     const pass = decoded.slice(i + 1);
-    return user === 'admin' && pass === ADMIN_PASSWORD;
+    // Basic Auth：客户端 username 任意值（不验证），只验证密码
+    return pass === ADMIN_PASSWORD;
   } catch (e) { return false; }
 };
 
