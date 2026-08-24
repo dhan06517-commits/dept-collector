@@ -1,32 +1,28 @@
 // POST /api/delete
-import { getHeader, getClientIp } from "./_headers.js";
 // 删除单条月报
-// 鉴权：Basic Auth（管理员密码）
+// 鉴权：Basic Auth
 
 import { readDb, writeDb } from './_github.js';
-import { check as rateCheck, getIp } from './_rate-limiter.js';
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json'
 };
 
-const checkAdmin = (req) => {
-  const customPw = getHeader(req, 'x-admin-password');
-  if (customPw && customPw === ADMIN_PASSWORD) return true;
-  const auth = getHeader(req, 'authorization') || getHeader(req, 'Authorization');
-  if (auth && auth.startsWith('Basic ')) {
-    try {
-      const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');
-      const i = decoded.indexOf(':');
-      if (i >= 0 && decoded.slice(i + 1) === ADMIN_PASSWORD) return true;
-    } catch (_) {}
-  }
-  return false;
+const checkBasicAuth = (req) => {
+  const auth = req.headers['authorization'] || req.headers['Authorization'];
+  if (!auth || !auth.startsWith('Basic ')) return false;
+  try {
+    const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');
+    const i = decoded.indexOf(':');
+    if (i < 0) return false;
+    const pass = decoded.slice(i + 1);
+    return pass === ADMIN_PASSWORD;
+  } catch (e) { return false; }
 };
 
 export async function POST(req) {
@@ -36,20 +32,13 @@ export async function POST(req) {
       { status: 503, headers: corsHeaders }
     );
   }
-  const rate = rateCheck('delete', req);
-  if (!rate.ok) {
-    return new Response(
-      JSON.stringify({ error: '删除过于频繁', retryAfter: rate.retryAfter }),
-      { status: 429, headers: { ...corsHeaders, 'Retry-After': String(rate.retryAfter) } }
-    );
-  }
   if (!ADMIN_PASSWORD) {
     return new Response(
-      JSON.stringify({ error: '管理员密码未配置（Vercel 后台缺少 ADMIN_PASSWORD 环境变量）' }),
+      JSON.stringify({ error: '管理员密码未配置' }),
       { status: 503, headers: corsHeaders }
     );
   }
-  if (!checkAdmin(req)) {
+  if (!checkBasicAuth(req)) {
     return new Response(
       JSON.stringify({ error: '需要管理员密码' }),
       { status: 401, headers: { ...corsHeaders, 'WWW-Authenticate': 'Basic realm="Admin"' } }

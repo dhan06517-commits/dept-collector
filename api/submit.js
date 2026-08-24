@@ -1,11 +1,9 @@
 // POST /api/submit
-import { getHeader, getClientIp } from "./_headers.js";
 // 提交/覆盖一条月报
 // 鉴权：任何人
 // 存储：GitHub Repo `data/monthly-reports.json`
 
 import { readDb, writeDb } from './_github.js';
-import { check as rateCheck } from './_rate-limiter.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -46,13 +44,6 @@ export async function POST(req) {
     );
   }
 
-  const rate = rateCheck('submit', req);
-  if (!rate.ok) {
-    return new Response(
-      JSON.stringify({ error: '提交过于频繁', retryAfter: rate.retryAfter }),
-      { status: 429, headers: { ...corsHeaders, 'Retry-After': String(rate.retryAfter) } }
-    );
-  }
 
   const payload = await decodeBody(req);
   const record = payload.record;
@@ -78,12 +69,12 @@ export async function POST(req) {
     const dupes = records.filter(r => key(r) === key(record) && r.id !== record.id);
 
     // 审计：服务端注入元数据
-    const ip = getHeader(req, 'x-forwarded-for')?.split(',')[0]?.trim() || null;
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0]?.trim() || null;
     record.meta = {
       ...(record.meta || {}),
       submittedAt: new Date().toISOString(),
       submittedIp: ip,
-      submittedUa: (getHeader(req, 'user-agent') || '').slice(0, 200) || null
+      submittedUa: (req.headers['user-agent'] || '').slice(0, 200) || null
     };
 
     const next = records.filter(r => key(r) !== key(record));

@@ -1,7 +1,6 @@
 // GET /api/list?period=YYYY-MM
-// 只返回"已提交/待提交"部门名列表（不含任何月报内容）
-// 鉴权：任何人（但数据脱敏，只看到部门名 + 是否已交）
-// 月报内容请访问 /api/admin/list（需 Basic Auth）
+// 列出所有月报
+// 鉴权：任何人
 
 import { getStore } from './_github.js';
 
@@ -13,8 +12,8 @@ const corsHeaders = {
 };
 
 export async function GET(req) {
-  // Vercel 提供 nextUrl，包含完整 URL 参数
-  const period = req.nextUrl?.searchParams.get('period');
+  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const period = url.searchParams.get('period');
 
   if (!process.env.GITHUB_TOKEN) {
     return new Response(
@@ -24,20 +23,12 @@ export async function GET(req) {
   }
 
   try {
-    const all = await getStore().list(period);
-    // 数据脱敏：只暴露部门和提交时间，不返回月报内容
-    const summary = all.map(r => ({
-      dept: r.dept,
-      name: r.name,
-      period: r.period,
-      ts: r.ts
-      // ❌ 不返回 keyWork / coreKpi / projects / difficulties / meta
-    }));
-    summary.sort((a, b) => (a.dept || '').localeCompare(b.dept || ''));
+    const records = await getStore().list(period);
+    records.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
     return new Response(
       JSON.stringify({
-        records: summary,
-        count: summary.length,
+        records,
+        count: records.length,
         period: period || null
       }),
       { status: 200, headers: corsHeaders }

@@ -1,8 +1,6 @@
 // GET /api/admin-list
-import { getHeader, getClientIp } from "./_headers.js";
-// 返回完整月报内容（包含所有字段）
-// 鉴权方式 1：Basic Auth（向后兼容）
-// 鉴权方式 2：Header X-Admin-Password（页面内登录用）
+// 返回完整月报内容
+// 鉴权：Basic Auth
 
 import { getStore } from './_github.js';
 
@@ -10,25 +8,21 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Password, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Content-Type': 'application/json'
 };
 
-const checkAdmin = (req) => {
-  // 方式 1：自定义 Header（页面内登录）
-  const customPw = getHeader(req, 'x-admin-password');
-  if (customPw && customPw === ADMIN_PASSWORD) return true;
-  // 方式 2：Basic Auth
-  const auth = getHeader(req, 'authorization') || getHeader(req, 'Authorization');
-  if (auth && auth.startsWith('Basic ')) {
-    try {
-      const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');
-      const i = decoded.indexOf(':');
-      if (i >= 0 && decoded.slice(i + 1) === ADMIN_PASSWORD) return true;
-    } catch (_) {}
-  }
-  return false;
+const checkBasicAuth = (req) => {
+  const auth = req.headers['authorization'] || req.headers['Authorization'];
+  if (!auth || !auth.startsWith('Basic ')) return false;
+  try {
+    const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');
+    const i = decoded.indexOf(':');
+    if (i < 0) return false;
+    const pass = decoded.slice(i + 1);
+    return pass === ADMIN_PASSWORD;
+  } catch (e) { return false; }
 };
 
 export async function GET(req) {
@@ -38,14 +32,15 @@ export async function GET(req) {
   if (!ADMIN_PASSWORD) {
     return new Response(JSON.stringify({ error: '管理员密码未配置' }), { status: 503, headers: corsHeaders });
   }
-  if (!checkAdmin(req)) {
+  if (!checkBasicAuth(req)) {
     return new Response(
       JSON.stringify({ error: '需要管理员密码' }),
       { status: 401, headers: { ...corsHeaders, 'WWW-Authenticate': 'Basic realm="Admin"' } }
     );
   }
 
-  const period = req.nextUrl?.searchParams.get('period');
+  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const period = url.searchParams.get('period');
 
   try {
     const records = await getStore().list(period);
