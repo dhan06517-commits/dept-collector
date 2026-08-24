@@ -742,7 +742,26 @@
     })();
 
     const Store = {
-      _token: () => btoa('admin:' + CONFIG.ADMIN_PASSWORD),
+      /**
+       * 当前会话的密码（页面内登录后存，关闭标签即清空）
+       */
+      _adminPw: null,
+      setAdminPw(pw) {
+        this._adminPw = pw;
+        try { sessionStorage.setItem('adminPw', pw); } catch (_) {}
+      },
+      getAdminPw() {
+        if (this._adminPw) return this._adminPw;
+        try {
+          const v = sessionStorage.getItem('adminPw');
+          if (v) this._adminPw = v;
+        } catch (_) {}
+        return this._adminPw;
+      },
+      _authHeaders() {
+        const pw = this.getAdminPw();
+        return pw ? { 'X-Admin-Password': pw } : {};
+      },
       /**
        * 拉取所有月报（用于 Progress 算历史部门 / Admin 全局）
        */
@@ -781,19 +800,19 @@
         return data;
       },
       /**
-       * 管理员接口：拉取完整月报（含内容，需 Basic Auth）
+       * 管理员接口：拉取完整月报（含内容，需 X-Admin-Password Header）
        */
       async adminListByPeriod(period) {
         const url = '/api/admin-list?period=' + encodeURIComponent(period);
         const r = await fetch(url, {
-          headers: { 'Authorization': 'Basic ' + Store._token() }
+          headers: Store._authHeaders()
         });
         if (!r.ok) throw new Error('查询失败 (' + r.status + ')');
         const data = await r.json();
         return data.records || [];
       },
       /**
-       * 删除单条（需要 Basic Auth）
+       * 删除单条（需 X-Admin-Password）
        */
       async deleteOne(id) {
         const json = JSON.stringify({ id });
@@ -802,7 +821,7 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + Store._token()
+            ...Store._authHeaders()
           },
           body: b64
         });
@@ -813,14 +832,14 @@
         return data;
       },
       /**
-       * 清空所有（需要 Basic Auth）
+       * 清空所有（需 X-Admin-Password）
        */
       async clearAll() {
         const r = await fetch('/api/clear', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Basic ' + Store._token()
+            ...Store._authHeaders()
           }
         });
         const data = await r.json().catch(() => ({}));
@@ -1165,19 +1184,40 @@
       },
 
       bindEvents() {
-        // 密码
+        // 密码弹窗（页面内登录，调用后端 /api/admin_verify）
         const input = $('#passwordInput');
         const errEl = $('#passwordError');
-        const tryUnlock = () => {
-          if (input.value === CONFIG.ADMIN_PASSWORD) {
-            sessionStorage.setItem('adminUnlocked', '1');
-            $('#passwordModal').classList.remove('open');
-            errEl.style.display = 'none';
-            this.showData();
-            toast('解锁成功', 'success');
-          } else {
+        const tryUnlock = async () => {
+          const pw = input.value;
+          if (!pw) {
+            errEl.textContent = '请输入密码';
             errEl.style.display = 'block';
-            input.select();
+            return;
+          }
+          try {
+            const b64 = btoa(unescape(encodeURIComponent(JSON.stringify({ password: pw }))));
+            const r = await fetch('/api/admin_verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: b64
+            });
+            const data = await r.json().catch(() => ({}));
+            if (r.ok && data.ok) {
+              // ✅ 验证通过：存密码到 Store（sessionStorage）+ 跳弹窗
+              Store.setAdminPw(pw);
+              $('#passwordModal').classList.remove('open');
+              errEl.style.display = 'none';
+              input.value = '';
+              this.showData();
+              toast('解锁成功', 'success');
+            } else {
+              errEl.textContent = data.error || `密码错误 (${r.status})`;
+              errEl.style.display = 'block';
+              input.select();
+            }
+          } catch (e) {
+            errEl.textContent = '网络错误：' + e.message;
+            errEl.style.display = 'block';
           }
         };
         $('#passwordConfirm').addEventListener('click', tryUnlock);

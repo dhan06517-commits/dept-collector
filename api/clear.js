@@ -14,18 +14,18 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 };
 
-const checkBasicAuth = (req) => {
+const checkAdmin = (req) => {
+  const customPw = req.headers.get('x-admin-password');
+  if (customPw && customPw === ADMIN_PASSWORD) return true;
   const auth = req.headers.get('authorization') || req.headers.get('Authorization');
-  if (!auth || !auth.startsWith('Basic ')) return false;
-  try {
-    const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');
-    const i = decoded.indexOf(':');
-    if (i < 0) return false;
-    const user = decoded.slice(0, i);
-    const pass = decoded.slice(i + 1);
-    // Basic Auth：客户端 username 任意值（不验证），只验证密码
-    return pass === ADMIN_PASSWORD;
-  } catch (e) { return false; }
+  if (auth && auth.startsWith('Basic ')) {
+    try {
+      const decoded = Buffer.from(auth.slice(6), 'base64').toString('utf8');
+      const i = decoded.indexOf(':');
+      if (i >= 0 && decoded.slice(i + 1) === ADMIN_PASSWORD) return true;
+    } catch (_) {}
+  }
+  return false;
 };
 
 export async function POST(req) {
@@ -48,7 +48,7 @@ export async function POST(req) {
       { status: 503, headers: corsHeaders }
     );
   }
-  if (!checkBasicAuth(req)) {
+  if (!checkAdmin(req)) {
     return new Response(
       JSON.stringify({ error: '需要管理员密码' }),
       { status: 401, headers: { ...corsHeaders, 'WWW-Authenticate': 'Basic realm="Admin"' } }
