@@ -614,6 +614,27 @@
     'use strict';
 
     /* ============================================================
+       ADMIN_PIN_HASH（管理员 PIN 的 SHA-256 哈希）
+       ------------------------------------------------------------
+       明文 PIN 不进代码 / 不进聊天 / 不进 Git history
+       部署前请按下面步骤生成你的哈希并替换这里：
+
+       1) 浏览器访问 https://dept-collector.vercel.app/?admin=admin123
+       2) F12 Console 粘贴运行（解锁粘贴：先输入 allow pasting 回车）：
+          (async () => {
+            const buf = new TextEncoder().encode('你的PIN');
+            const h = await crypto.subtle.digest('SHA-256', buf);
+            console.log(Array.from(new Uint8Array(h))
+              .map(b => b.toString(16).padStart(2, '0')).join(''));
+          })();
+       3) 把 console 输出的 64 位哈希填到下面 ADMIN_PIN_HASH
+       4) 提交并 push，部署后用你的 PIN 登录
+
+       留空（''）= 禁用校验（任何人可进），仅供开发调试用
+       ============================================================ */
+    const ADMIN_PIN_HASH = '';
+
+    /* ============================================================
        CONFIG（管理员密码定义在 Store 模块内，因为 Store 用它做 Basic Auth）
        ============================================================ */
 
@@ -1152,19 +1173,16 @@
       },
 
       bindEvents() {
-        // PIN 弹窗：
-        //   - sessionStorage 没有 adminPinHash → 首次设置 PIN（任意 6-12 位字符串）
-        //   - 已设置 → 输 PIN 解锁（哈希比对）
+        // PIN 校验：
+        //   - 代码里预置 ADMIN_PIN_HASH（SHA-256）
+        //   - 用户输入 PIN → 浏览器算哈希 → 与预置哈希比对
+        //   - 通过 → sessionStorage.adminUnlocked = '1'（tab 关闭即失效）
+        //   - 不通过 → 错误提示
         const input = $('#passwordInput');
         const errEl = $('#passwordError');
         const titleEl = $('#passwordTitle');
         const hintEl = $('#passwordHint');
-        const isFirstTime = !sessionStorage.getItem('adminPinHash');
-        if (titleEl) titleEl.textContent = isFirstTime ? '设置管理员 PIN' : '管理员访问';
-        if (hintEl) hintEl.textContent = isFirstTime
-          ? '首次访问，请设置一个 6-12 位 PIN（仅本浏览器记住，关闭浏览器会失效）'
-          : '请输入管理员 PIN 以查看月报汇总。';
-        input.placeholder = isFirstTime ? '设置 6-12 位 PIN' : '管理员 PIN';
+        input.placeholder = '管理员 PIN';
         input.type = 'password';
         // SHA-256 哈希（异步，crypto.subtle 必须 HTTPS 或 localhost）
         const sha256 = async (s) => {
@@ -1173,39 +1191,35 @@
           return Array.from(new Uint8Array(hash))
             .map(b => b.toString(16).padStart(2, '0')).join('');
         };
+        // 检查是否已配置 PIN 哈希
+        if (!ADMIN_PIN_HASH) {
+          // 未配置：禁止进入（即使有人访问 ?admin=admin123 也看不到任何东西）
+          if (titleEl) titleEl.textContent = '管理员 PIN 未配置';
+          if (hintEl) hintEl.innerHTML = '请联系系统管理员在 <code>index.html</code> 中设置 <code>ADMIN_PIN_HASH</code>。<br><br>生成方式见代码注释（SHA-256）。';
+          input.style.display = 'none';
+          $('#passwordConfirm').style.display = 'none';
+          $('#passwordCancel').textContent = '关闭';
+          return;
+        }
         const tryUnlock = async () => {
           const v = input.value;
-          if (v.length < 6 || v.length > 12) {
-            errEl.textContent = 'PIN 长度需在 6-12 位之间';
+          if (!v) {
+            errEl.textContent = '请输入 PIN';
             errEl.style.display = 'block';
-            input.select();
             return;
           }
-          if (isFirstTime) {
-            // 设置：存哈希
-            const h = await sha256(v);
-            sessionStorage.setItem('adminPinHash', h);
+          const h = await sha256(v);
+          if (h === ADMIN_PIN_HASH) {
             sessionStorage.setItem('adminUnlocked', '1');
             $('#passwordModal').classList.remove('open');
             errEl.style.display = 'none';
             input.value = '';
             this.showData();
-            toast('PIN 已设置，解锁成功', 'success');
+            toast('解锁成功', 'success');
           } else {
-            // 校验
-            const h = await sha256(v);
-            if (h === sessionStorage.getItem('adminPinHash')) {
-              sessionStorage.setItem('adminUnlocked', '1');
-              $('#passwordModal').classList.remove('open');
-              errEl.style.display = 'none';
-              input.value = '';
-              this.showData();
-              toast('解锁成功', 'success');
-            } else {
-              errEl.textContent = 'PIN 错误，请重试';
-              errEl.style.display = 'block';
-              input.select();
-            }
+            errEl.textContent = 'PIN 错误，请重试';
+            errEl.style.display = 'block';
+            input.select();
           }
         };
         $('#passwordConfirm').addEventListener('click', tryUnlock);
